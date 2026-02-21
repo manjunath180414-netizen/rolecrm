@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spy Dashboard</title>
+  <style>
+    body{font-family:Arial;background:#f4f6f9;margin:0;padding:20px;}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      background:white;
+      margin-top:20px;
+    }
+    th,td{
+      padding:10px;
+      border-bottom:1px solid #ddd;
+      text-align:left;
+      font-size:13px;
+    }
+    th{background:#f1f5f9;}
+    .idle{color:red;font-weight:bold;}
+  </style>
+</head>
+<body>
+
+<h2>Agent Activity Monitor</h2>
+
+<select id="agentSelect"></select>
+
+<table>
+  <thead>
+    <tr>
+      <th>Lead Name</th>
+      <th>Copied At</th>
+      <th>Submitted At</th>
+      <th>Call Duration</th>
+      <th>Idle Before Next</th>
+    </tr>
+  </thead>
+  <tbody id="activityTable"></tbody>
+</table>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, where } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let userMap = {};
+
+onAuthStateChanged(auth, async(user)=>{
+  if(!user) location.href="index.html";
+
+  loadAgents();
+});
+
+async function loadAgents(){
+  const snap = await getDocs(collection(db,"users"));
+  const select = document.getElementById("agentSelect");
+  select.innerHTML="";
+
+  snap.forEach(d=>{
+    if(d.data().role==="cleaner"){
+      userMap[d.id]=d.data().email;
+      select.innerHTML+=`<option value="${d.id}">${d.data().email}</option>`;
+    }
+  });
+
+  select.onchange=()=>loadActivity(select.value);
+
+  if(select.value) loadActivity(select.value);
+}
+
+async function loadActivity(agentId){
+
+  const q=query(
+    collection(db,"leads"),
+    where("assignedCleaner","==",agentId)
+  );
+
+  const snap=await getDocs(q);
+
+  let activities=[];
+
+  snap.forEach(d=>{
+    const data=d.data();
+    if(data.callStartTime && data.callEndTime){
+      activities.push({
+        name:data.studentName,
+        start:new Date(data.callStartTime.seconds*1000),
+        end:new Date(data.callEndTime.seconds*1000),
+        duration:data.callDuration || 0
+      });
+    }
+  });
+
+  activities.sort((a,b)=>a.start-b.start);
+
+  const table=document.getElementById("activityTable");
+  table.innerHTML="";
+
+  for(let i=0;i<activities.length;i++){
+
+    let idle="-";
+
+    if(i<activities.length-1){
+      const diff=(activities[i+1].start - activities[i].end)/1000;
+      idle=Math.floor(diff)+" sec";
+    }
+
+    table.innerHTML+=`
+      <tr>
+        <td>${activities[i].name}</td>
+        <td>${activities[i].start.toLocaleTimeString()}</td>
+        <td>${activities[i].end.toLocaleTimeString()}</td>
+        <td>${activities[i].duration} sec</td>
+        <td class="${idle!=='-' && parseInt(idle)>60?'idle':''}">
+          ${idle}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+</script>
+
+</body>
+</html>
