@@ -2,11 +2,86 @@
 <html>
 <head>
   <title>CRM Login</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg,#667eea,#764ba2);
+    }
+
+    .box {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .google {
+      background: #4285F4;
+      color: white;
+    }
+
+    .google:hover {
+      background: #2d6cdf;
+    }
+
+    .already {
+      background: #28a745;
+      color: white;
+    }
+
+    .already:hover {
+      background: #1f8c39;
+    }
+
+    .footer {
+      margin-top: 15px;
+      font-size: 13px;
+      color: gray;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Login</h2>
-<button id="loginBtn">Login with Google</button>
+<div class="box">
+  <h2>Education CRM</h2>
+
+  <button class="google" id="loginBtn">
+    Login with Google
+  </button>
+
+  <button class="already" id="checkBtn">
+    Already Logged In? Click Here
+  </button>
+
+  <div class="footer">
+    Secure Role Based Access
+  </div>
+</div>
 
 <script type="module">
 
@@ -26,30 +101,58 @@ const firebaseConfig = {
   appId: "1:273390543342:web:2d9d677a3b58f15d26aeff",
   measurementId: "G-FE1N5RJ8PK"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 const provider = new GoogleAuthProvider();
 
-// AUTO REDIRECT IF ALREADY LOGGED IN
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const snap = await getDoc(doc(db,"users",user.uid));
-    if (!snap.exists()) return;
+document.getElementById("loginBtn").onclick = async () => {
 
-    const role = snap.data().role;
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
 
-    if(role==="cleaner") location.href="1.html";
-    else if(role==="info") location.href="2.html";
-    else if(role==="final") location.href="3.html";
-    else if(role==="admin") location.href="admin.html";
-  }
-});
-
-document.getElementById("loginBtn").onclick = async ()=>{
-  await signInWithPopup(auth, provider);
+  redirectUser(user);
 };
+
+document.getElementById("checkBtn").onclick = () => {
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("You are not logged in.");
+    return;
+  }
+
+  redirectUser(user);
+};
+
+async function redirectUser(user){
+
+  const snap = await getDoc(doc(db,"users",user.uid));
+
+  if (!snap.exists()) {
+    alert("Access Denied. Contact Admin.");
+    return;
+  }
+
+  const role = snap.data().role;
+
+  if (role === "cleaner")
+    window.location.href = "1.html";
+
+  else if (role === "info")
+    window.location.href = "2.html";
+
+  else if (role === "final")
+    window.location.href = "3.html";
+
+  else if (role === "admin")
+    window.location.href = "admin.html";
+
+  else
+    alert("Account Disabled");
+}
 
 </script>
 
