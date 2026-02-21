@@ -161,7 +161,7 @@ async function loadNextLead(uid){
 
   const q=query(
     collection(db,"leads"),
-    where("stage","in",["verification"])
+    where("stage","in","verification"),
     where("assignedCleaner","==",uid)
   );
 
@@ -205,10 +205,6 @@ async function loadNextLead(uid){
 <div id="followUpContainer" style="display:none;">
   <input type="datetime-local" id="followUpTime">
 </div>
-
-      <div id="followUpContainer" style="display:none;">
-        <input type="datetime-local" id="followUpTime">
-      </div>
 
       <button class="submit-btn" onclick="submitStatus()">Submit</button>
     </div>
