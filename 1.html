@@ -1,191 +1,113 @@
-<!DOCTYPE html>
+      <!DOCTYPE html>
 <html>
 <head>
   <title>Verification Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
     body{
       margin:0;
-      font-family:Arial, sans-serif;
-      background:#eef2f7;
+      font-family:Arial;
+      background:#f4f6f9;
     }
 
-    .sidebar{
-      width:230px;
-      height:100vh;
-      position:fixed;
-      background:linear-gradient(180deg,#0f172a,#1e3a8a);
-      color:white;
+    .container{
+      max-width:900px;
+      margin:30px auto;
       padding:20px;
-    }
-
-    .sidebar h2{
-      margin-bottom:30px;
-    }
-
-    .sidebar p{
-      margin:15px 0;
-      opacity:0.8;
-    }
-
-    .logout-btn{
-      background:#ef4444;
-      padding:8px;
-      border:none;
-      border-radius:6px;
-      color:white;
-      cursor:pointer;
-      margin-top:20px;
-    }
-
-    .main{
-      margin-left:250px;
-      padding:20px;
-    }
-
-    .header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
     }
 
     .stats{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:15px;
-      margin-top:20px;
+      display:flex;
+      gap:20px;
+      margin-bottom:30px;
     }
 
     .stat-card{
+      flex:1;
+      background:white;
       padding:20px;
       border-radius:12px;
-      color:white;
-      box-shadow:0 10px 25px rgba(0,0,0,0.15);
-    }
-
-    .blue{background:#2563eb;}
-    .orange{background:#f97316;}
-    .green{background:#16a34a;}
-    .red{background:#dc2626;}
-
-    .section{
-      margin-top:30px;
-    }
-
-    .lead-grid{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:20px;
-      margin-top:20px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+      text-align:center;
     }
 
     .lead-card{
       background:white;
-      padding:15px;
-      border-radius:12px;
-      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+      padding:30px;
+      border-radius:15px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.1);
+      text-align:center;
     }
 
-    .lead-card button{
-      padding:6px 10px;
-      margin:5px 3px 0 0;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      font-size:12px;
+    .lead-card h2{
+      margin-bottom:10px;
+    }
+
+    .copy-btn{
+      background:#2563eb;
       color:white;
+      padding:10px 15px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      margin-top:10px;
     }
 
-    .btn-green{background:#22c55e;}
-    .btn-red{background:#ef4444;}
-    .btn-orange{background:#f97316;}
-    .btn-blue{background:#3b82f6;}
-
-    .bottom-grid{
-      display:grid;
-      grid-template-columns:2fr 1fr;
-      gap:20px;
-      margin-top:30px;
+    select, input{
+      padding:10px;
+      margin-top:15px;
+      width:100%;
+      border-radius:8px;
+      border:1px solid #ccc;
     }
 
-    canvas{
-      background:white;
-      padding:15px;
-      border-radius:12px;
-      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    .submit-btn{
+      margin-top:20px;
+      background:#16a34a;
+      color:white;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+      width:100%;
     }
 
-    .reminder{
-      background:white;
-      padding:20px;
-      border-radius:12px;
-      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    .timer{
+      margin-top:15px;
+      font-weight:bold;
+      color:#dc2626;
     }
+
   </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <h2>CRM</h2>
-  <p>Cleaner Panel</p>
-  <p id="userEmail"></p>
-  <button class="logout-btn" onclick="logout()">Logout</button>
-</div>
+<div class="container">
 
-<div class="main">
+  <h2>Cleaner Dashboard</h2>
 
-  <div class="header">
-    <h2>Verification Dashboard</h2>
-  </div>
-
-  <!-- Stats -->
   <div class="stats">
-    <div class="stat-card blue">
+    <div class="stat-card">
       Total Leads
-      <h2 id="totalCount">0</h2>
+      <h3 id="total">0</h3>
     </div>
-
-    <div class="stat-card orange">
+    <div class="stat-card">
+      Verified
+      <h3 id="verified">0</h3>
+    </div>
+    <div class="stat-card">
       Remaining
-      <h2 id="remainingCount">0</h2>
-    </div>
-
-    <div class="stat-card green">
-      Verified Today
-      <h2 id="verifiedToday">0</h2>
-    </div>
-
-    <div class="stat-card red">
-      Closed Today
-      <h2 id="closedToday">0</h2>
+      <h3 id="remaining">0</h3>
     </div>
   </div>
 
-  <!-- Leads -->
-  <div class="section">
-    <h3>Verification Leads</h3>
-    <div class="lead-grid" id="leadContainer"></div>
-  </div>
-
-  <!-- Bottom -->
-  <div class="bottom-grid">
-    <canvas id="chart"></canvas>
-
-    <div class="reminder">
-      <h3>Follow-Up Reminders</h3>
-      <p>• Call Rahul at 11 AM</p>
-      <p>• Follow up with Priya</p>
-      <p>• Check Amit tomorrow</p>
-    </div>
-  </div>
+  <div id="leadSection"></div>
 
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } 
+import { getAuth, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -200,84 +122,135 @@ const firebaseConfig = {
   appId: "1:273390543342:web:2d9d677a3b58f15d26aeff",
   measurementId: "G-FE1N5RJ8PK"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+let currentLead = null;
+let timerInterval = null;
+let seconds = 0;
+
 onAuthStateChanged(auth, async(user)=>{
-  if(!user) location.href="index.html";
+  if(!user) return location.href="index.html";
 
-  const userSnap = await getDoc(doc(db,"users",user.uid));
-  if(!userSnap.exists() || userSnap.data().role !== "cleaner"){
-    location.href="index.html";
-  }
-
-  document.getElementById("userEmail").innerText=user.email;
-
-  loadLeads();
+  await loadStats(user.uid);
+  await loadNextLead(user.uid);
 });
 
-async function loadLeads(){
-  const q=query(collection(db,"leads"),where("stage","==","verification"));
-  const snap=await getDocs(q);
+async function loadStats(uid){
+  const snap = await getDocs(collection(db,"leads"));
 
-  let count=0;
-  const container=document.getElementById("leadContainer");
-  container.innerHTML="";
+  let total=0, verified=0, remaining=0;
 
   snap.forEach(d=>{
-    count++;
     const data=d.data();
-
-    container.innerHTML+=`
-      <div class="lead-card">
-        <b>${data.studentName}</b><br>
-        Phone: ${data.phone}<br>
-        Status: ${data.status||"New"}<br>
-
-        <button class="btn-green" onclick="updateStage('${d.id}','info')">Verified</button>
-        <button class="btn-red" onclick="updateStage('${d.id}','closed')">Wrong</button>
-        <button class="btn-orange" onclick="updateStatus('${d.id}','Switch Off')">Switch Off</button>
-        <button class="btn-blue">Call Back</button>
-      </div>
-    `;
+    if(data.assignedCleaner===uid){
+      total++;
+      if(data.stage==="info") verified++;
+      if(data.stage==="verification") remaining++;
+    }
   });
 
-  document.getElementById("totalCount").innerText=count;
-  document.getElementById("remainingCount").innerText=count;
+  document.getElementById("total").innerText=total;
+  document.getElementById("verified").innerText=verified;
+  document.getElementById("remaining").innerText=remaining;
 }
 
-window.updateStage=async(id,stage)=>{
-  await updateDoc(doc(db,"leads",id),{
-    stage:stage,
-    updatedAt:new Date()
-  });
-  loadLeads();
+async function loadNextLead(uid){
+
+  const q=query(
+    collection(db,"leads"),
+    where("stage","==","verification"),
+    where("assignedCleaner","==",uid)
+  );
+
+  const snap=await getDocs(q);
+
+  if(snap.empty){
+    document.getElementById("leadSection").innerHTML="<h3>No Leads Available</h3>";
+    return;
+  }
+
+  const docSnap=snap.docs[0];
+  currentLead={id:docSnap.id,...docSnap.data()};
+
+  document.getElementById("leadSection").innerHTML=`
+    <div class="lead-card">
+      <h2>${currentLead.studentName}</h2>
+      <p id="phone">${currentLead.phone}</p>
+      <button class="copy-btn" onclick="copyNumber()">Copy Number</button>
+
+      <div class="timer" id="timer">00:00</div>
+
+      <select id="status">
+        <option value="">Select Status</option>
+        <option value="verified">Verified</option>
+        <option value="not_receiving">Not Receiving</option>
+        <option value="switch_off">Switch Off</option>
+        <option value="wrong_number">Wrong Number</option>
+      </select>
+
+      <div id="followUpContainer" style="display:none;">
+        <input type="datetime-local" id="followUpTime">
+      </div>
+
+      <button class="submit-btn" onclick="submitStatus()">Submit</button>
+    </div>
+  `;
+}
+
+window.copyNumber = ()=>{
+  navigator.clipboard.writeText(currentLead.phone);
+  startTimer();
 };
 
-window.updateStatus=async(id,status)=>{
-  await updateDoc(doc(db,"leads",id),{
-    status:status,
-    updatedAt:new Date()
-  });
-  loadLeads();
+function startTimer(){
+  seconds=0;
+  if(timerInterval) clearInterval(timerInterval);
+
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const mins=Math.floor(seconds/60);
+    const secs=seconds%60;
+    document.getElementById("timer").innerText=
+      `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  },1000);
+}
+
+window.submitStatus = async ()=>{
+
+  const status=document.getElementById("status").value;
+  if(!status) return alert("Select status");
+
+  let updateData={
+    updatedAt:new Date(),
+    callDuration:seconds
+  };
+
+  if(status==="verified"){
+    const follow=document.getElementById("followUpTime").value;
+    if(!follow) return alert("Select follow-up time");
+    updateData.stage="info";
+    updateData.followUpTime=new Date(follow);
+  } else {
+    updateData.stage="closed";
+    updateData.status=status;
+  }
+
+  await updateDoc(doc(db,"leads",currentLead.id),updateData);
+
+  clearInterval(timerInterval);
+  loadNextLead(auth.currentUser.uid);
+  loadStats(auth.currentUser.uid);
 };
 
-window.logout=async()=>{
-  await signOut(auth);
-  location.href="index.html";
-};
-
-// Chart Demo
-new Chart(document.getElementById("chart"),{
-  type:"bar",
-  data:{
-    labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-    datasets:[{
-      label:"Calls",
-      data:[12,19,8,15,22,18,25],
-      backgroundColor:"#2563eb"
-    }]
+document.addEventListener("change",(e)=>{
+  if(e.target.id==="status"){
+    if(e.target.value==="verified")
+      document.getElementById("followUpContainer").style.display="block";
+    else
+      document.getElementById("followUpContainer").style.display="none";
   }
 });
 
