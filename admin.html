@@ -87,6 +87,8 @@
         <th>Switch Off</th>
         <th>Wrong Number</th>
         <th>Call Back</th>
+        <th>Total Talk Time</th>
+        <th>Avg Call Time</th>
       </tr>
     </thead>
     <tbody id="performanceTable"></tbody>
@@ -518,6 +520,8 @@ window.showDuplicates = async () => {
           switchOff:0,
           wrongNumber:0,
           callBack:0
+          totalTalkTime: 0,
+          callCount: 0
         };
       }
     });
@@ -560,8 +564,16 @@ window.showDuplicates = async () => {
       if(data.status === "wrong_number"){
         performanceMap[cleanerId].wrongNumber++;
       }
+      if(data.callDuration){
+  performanceMap[cleanerId].totalTalkTime += Number(data.callDuration);
+  performanceMap[cleanerId].callCount++;
+      }
     });
-
+function formatTime(seconds){
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins + "m " + secs + "s";
+      }
     // Render Table
     const table = document.getElementById("performanceTable");
     table.innerHTML="";
@@ -570,21 +582,26 @@ window.showDuplicates = async () => {
 
       const p = performanceMap[cleanerId];
 
-      table.innerHTML += `
-        <tr>
-          <td>${p.email}</td>
-          <td>${p.assigned}</td>
-          <td>${p.pending}</td>
-          <td>${p.attempted}</td>
-          <td>${p.verified}</td>
-          <td>${p.notInterested}</td>
-          <td>${p.notReceiving}</td>
-          <td>${p.switchOff}</td>
-          <td>${p.wrongNumber}</td>
-          <td>${p.callBack}</td>
-        </tr>
-      `;
-    }
+      const avg = p.callCount > 0 
+  ? Math.floor(p.totalTalkTime / p.callCount)
+  : 0;
+
+table.innerHTML += `
+<tr>
+  <td>${p.email}</td>
+  <td>${p.assigned}</td>
+  <td>${p.pending}</td>
+  <td>${p.attempted}</td>
+  <td>${p.verified}</td>
+  <td>${p.notInterested}</td>
+  <td>${p.notReceiving}</td>
+  <td>${p.switchOff}</td>
+  <td>${p.wrongNumber}</td>
+  <td>${p.callBack}</td>
+  <td>${formatTime(p.totalTalkTime)}</td>
+  <td>${formatTime(avg)}</td>
+</tr>
+`;
 
   });
   }
