@@ -93,6 +93,10 @@
   <h3>Search Leads</h3>
   <input type="text" id="searchInput" placeholder="Search name or phone" onkeyup="filterLeads()">
 </div>
+  <div class="card">
+  <button onclick="showUnassigned()">Unassigned Leads</button>
+  <button onclick="showDuplicates()">Duplicate Leads</button>
+  </div>
 
 <!-- LEADS TABLE -->
 <div class="card">
@@ -339,7 +343,94 @@ window.filterLeads=()=>{
     row.style.display=row.innerText.toLowerCase().includes(input)?"":"none";
   });
 };
+  window.showUnassigned = async () => {
 
+  const table = document.getElementById("leadTable");
+  table.innerHTML = "";
+
+  const snap = await getDocs(collection(db,"leads"));
+
+  snap.forEach(d=>{
+    const data = d.data();
+
+    if(!data.assignedCleaner){
+
+      table.innerHTML += `
+        <tr>
+          <td>${data.studentName}</td>
+          <td>${data.phone}</td>
+          <td>Unassigned</td>
+          <td>
+            <button onclick="assignEqual('${d.id}')">Assign Equal</button>
+            <button onclick="assignSpecific('${d.id}')">Assign Specific</button>
+          </td>
+        </tr>
+      `;
+    }
+  });
+};
+  window.assignEqual = async (leadId) => {
+
+  if(cleaners.length === 0) return alert("No cleaners found");
+
+  const cleaner = cleaners[Math.floor(Math.random() * cleaners.length)];
+
+  await updateDoc(doc(db,"leads",leadId),{
+    assignedCleaner: cleaner.uid
+  });
+
+  alert("Assigned");
+  showUnassigned();
+};
+
+
+window.assignSpecific = async (leadId) => {
+
+  const cleanerId = document.getElementById("cleanerSelect").value;
+
+  await updateDoc(doc(db,"leads",leadId),{
+    assignedCleaner: cleanerId
+  });
+
+  alert("Assigned");
+  showUnassigned();
+};
+window.showDuplicates = async () => {
+
+  const table = document.getElementById("leadTable");
+  table.innerHTML = "";
+
+  const snap = await getDocs(collection(db,"leads"));
+
+  const phoneMap = {};
+
+  snap.forEach(d=>{
+    const phone = d.data().phone;
+
+    if(!phoneMap[phone]) phoneMap[phone] = [];
+    phoneMap[phone].push({id:d.id,data:d.data()});
+  });
+
+  for(const phone in phoneMap){
+
+    if(phoneMap[phone].length > 1){
+
+      phoneMap[phone].forEach(item=>{
+        table.innerHTML += `
+          <tr>
+            <td>${item.data.studentName}</td>
+            <td>${item.data.phone}</td>
+            <td>Duplicate</td>
+            <td>
+              <button onclick="deleteLead('${item.id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+
+    }
+  }
+};
 </script>
 
 </body>
