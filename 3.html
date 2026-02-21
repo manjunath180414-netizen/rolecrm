@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Final Panel</title>
+  <style>
+    body { font-family: Arial; background:#f4f6f9; padding:20px; }
+    .card {
+      background:white;
+      padding:15px;
+      margin-top:15px;
+      border-radius:8px;
+      box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    }
+    button { padding:6px 10px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
+    .green { background:#28a745; color:white; }
+    .orange { background:#fd7e14; color:white; }
+    .red { background:#dc3545; color:white; }
+  </style>
+</head>
+<body>
+
+<h2>Final Conversion Panel</h2>
+<div id="userEmail"></div>
+<div id="leads"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, async(user)=>{
+  if(!user) return location.href="index.html";
+
+  document.getElementById("userEmail").innerText=user.email;
+
+  const q = query(collection(db,"leads"), where("stage","==","whatsapp"));
+  const snap = await getDocs(q);
+
+  snap.forEach(d=>{
+    const data=d.data();
+    document.getElementById("leads").innerHTML+=`
+      <div class="card">
+        <b>${data.studentName}</b><br>
+        ${data.phone}<br>
+        Current Amount: ${data.amount || 0}<br><br>
+
+        <button class="green" onclick="pay('${d.id}')">Payment Received</button>
+        <button class="orange" onclick="pending('${d.id}')">Payment Pending</button>
+        <button class="red" onclick="close('${d.id}')">Not Paying</button>
+      </div>
+    `;
+  });
+});
+
+window.pay = async(id)=>{
+  await updateDoc(doc(db,"leads",id),{
+    stage:"closed",
+    updatedAt:new Date()
+  });
+  location.reload();
+};
+
+window.pending = async(id)=>{
+  alert("Remain in WhatsApp stage");
+};
+
+window.close = async(id)=>{
+  await updateDoc(doc(db,"leads",id),{
+    stage:"closed",
+    updatedAt:new Date()
+  });
+  location.reload();
+};
+
+</script>
+</body>
+</html>
