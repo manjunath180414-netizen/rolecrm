@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial; background:#f4f6f9; padding:20px; }
+    h2 { margin-bottom:10px; }
+    .top { display:flex; justify-content:space-between; align-items:center; }
+    .card {
+      background:white;
+      padding:15px;
+      margin:10px 0;
+      border-radius:8px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+    input, select {
+      padding:6px;
+      margin:5px;
+    }
+    button {
+      padding:6px 12px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      background:#007bff;
+      color:white;
+    }
+    .danger { background:#dc3545; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  </style>
+</head>
+<body>
+
+<div class="top">
+  <h2>Admin Dashboard</h2>
+  <div id="userEmail"></div>
+</div>
+
+<h3>Statistics</h3>
+<div class="stats">
+  <div class="card">Total Leads: <span id="total"></span></div>
+  <div class="card">Verification: <span id="verification"></span></div>
+  <div class="card">Info: <span id="info"></span></div>
+  <div class="card">WhatsApp: <span id="whatsapp"></span></div>
+  <div class="card">Closed: <span id="closed"></span></div>
+  <div class="card">Revenue: ₹<span id="revenue"></span></div>
+</div>
+
+<h3>Create / Update User</h3>
+<div class="card">
+  Email: <input id="email">
+  Role:
+  <select id="role">
+    <option value="cleaner">Cleaner</option>
+    <option value="info">Info</option>
+    <option value="final">Final</option>
+    <option value="admin">Admin</option>
+    <option value="disabled">Disabled</option>
+  </select>
+  <button onclick="saveUser()">Save</button>
+</div>
+
+<h3>All Users</h3>
+<div id="users"></div>
+
+<h3>Download Report</h3>
+<button onclick="downloadCSV()">Download CSV</button>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA7gt9nQeW6XXADCCoMLaKPWS6Z3YcF-ls",
+  authDomain: "rolecrm-dc37a.firebaseapp.com",
+  projectId: "rolecrm-dc37a",
+  storageBucket: "rolecrm-dc37a.firebasestorage.app",
+  messagingSenderId: "273390543342",
+  appId: "1:273390543342:web:2d9d677a3b58f15d26aeff",
+  measurementId: "G-FE1N5RJ8PK"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, async (user)=>{
+
+  if(!user) return location.href="index.html";
+
+  const userSnap = await getDoc(doc(db,"users",user.uid));
+
+  if(!userSnap.exists() || userSnap.data().role !== "admin"){
+    alert("Access Denied");
+    return location.href="index.html";
+  }
+
+  document.getElementById("userEmail").innerText=user.email;
+
+  loadStats();
+  loadUsers();
+});
+
+async function loadStats(){
+
+  const snap = await getDocs(collection(db,"leads"));
+
+  let total=0, verification=0, info=0, whatsapp=0, closed=0, revenue=0;
+
+  snap.forEach(d=>{
+    total++;
+    const data=d.data();
+    if(data.stage==="verification") verification++;
+    if(data.stage==="info") info++;
+    if(data.stage==="whatsapp") whatsapp++;
+    if(data.stage==="closed") closed++;
+    if(data.amount) revenue+=Number(data.amount);
+  });
+
+  document.getElementById("total").innerText=total;
+  document.getElementById("verification").innerText=verification;
+  document.getElementById("info").innerText=info;
+  document.getElementById("whatsapp").innerText=whatsapp;
+  document.getElementById("closed").innerText=closed;
+  document.getElementById("revenue").innerText=revenue;
+}
+
+async function loadUsers(){
+
+  const snap = await getDocs(collection(db,"users"));
+  const container=document.getElementById("users");
+  container.innerHTML="";
+
+  snap.forEach(d=>{
+    const data=d.data();
+    container.innerHTML+=`
+      <div class="card">
+        ${data.email} - ${data.role}
+      </div>
+    `;
+  });
+}
+
+window.saveUser = async()=>{
+
+  const email=document.getElementById("email").value;
+  const role=document.getElementById("role").value;
+
+  const snap = await getDocs(collection(db,"users"));
+
+  snap.forEach(async(d)=>{
+    if(d.data().email===email){
+      await setDoc(doc(db,"users",d.id),{
+        ...d.data(),
+        role:role
+      });
+      alert("Updated");
+      loadUsers();
+    }
+  });
+};
+
+window.downloadCSV = async()=>{
+
+  const snap = await getDocs(collection(db,"leads"));
+
+  let csv="Name,Phone,Stage,Amount\n";
+
+  snap.forEach(d=>{
+    const data=d.data();
+    csv+=`${data.studentName},${data.phone},${data.stage},${data.amount||0}\n`;
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="report.csv";
+  a.click();
+};
+
+</script>
+
+</body>
+</html>
