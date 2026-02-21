@@ -94,44 +94,27 @@ document.getElementById("loginBtn").onclick = async ()=>{
 
 
 // 🔥 MAIN ROLE HANDLER
-async function handleUser(user){
+onAuthStateChanged(auth, async(user)=>{
+  if(!user) return;
 
   const userRef = doc(db,"users",user.uid);
-  const snap = await getDoc(userRef);
+  const userSnap = await getDoc(userRef);
 
-  // 🔥 If new user → auto create as cleaner
-  if(!snap.exists()){
-    await setDoc(userRef,{
-      name: user.displayName,
-      email: user.email,
-      role: "cleaner",
-      createdAt: new Date()
-    });
-
-    return location.href = "1.html";
+  if(!userSnap.exists()){
+     await setDoc(userRef,{
+        email:user.email,
+        role:"cleaner",
+        createdAt:new Date()
+     });
   }
 
-  const role = snap.data().role;
+  const role = (await getDoc(userRef)).data().role;
 
-  // 🔥 Redirect based on role
-  if(role === "admin")
-    location.href = "admin.html";
-
-  else if(role === "cleaner")
-    location.href = "1.html";
-
-  else if(role === "info")
-    location.href = "2.html";
-
-  else if(role === "final")
-    location.href = "3.html";
-
-  else if(role === "disabled")
-    location.href = "index.html";   // silently stay
-
-  else
-    location.href = "1.html";       // default fallback
-}
+  if(role === "cleaner") location.href="1.html";
+  if(role === "info") location.href="2.html";
+  if(role === "final") location.href="3.html";
+  if(role === "admin") location.href="admin.html";
+});
 
 </script>
 
