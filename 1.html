@@ -184,12 +184,27 @@ async function loadNextLead(uid){
       <div class="timer" id="timer">00:00</div>
 
       <select id="status">
-        <option value="">Select Status</option>
-        <option value="verified">Verified</option>
-        <option value="not_receiving">Not Receiving</option>
-        <option value="switch_off">Switch Off</option>
-        <option value="wrong_number">Wrong Number</option>
-      </select>
+  <option value="">Select Status</option>
+  <option value="verified">Verified</option>
+  <option value="not_interested">Not Interested</option>
+  <option value="not_receiving">Not Receiving</option>
+  <option value="switch_off">Switch Off</option>
+  <option value="wrong_number">Wrong Number</option>
+</select>
+
+<select id="district" style="display:none;">
+  <option value="">Select District</option>
+  <option value="Mysore">Mysore</option>
+  <option value="Raichur">Raichur</option>
+  <option value="Davangere">Davangere</option>
+  <option value="Chitradurga">Chitradurga</option>
+</select>
+
+<input type="text" id="school" placeholder="Enter School Name" style="display:none;">
+
+<div id="followUpContainer" style="display:none;">
+  <input type="datetime-local" id="followUpTime">
+</div>
 
       <div id="followUpContainer" style="display:none;">
         <input type="datetime-local" id="followUpTime">
@@ -221,21 +236,35 @@ function startTimer(){
 window.submitStatus = async ()=>{
 
   const status=document.getElementById("status").value;
+  const district=document.getElementById("district").value;
+  const school=document.getElementById("school").value;
+
   if(!status) return alert("Select status");
+  if(!district) return alert("Select district");
+  if(!school) return alert("Enter school name");
 
   let updateData={
     updatedAt:new Date(),
-    callDuration:seconds
+    callDuration:seconds,
+    status:status,
+    district:district,
+    school:school
   };
 
   if(status==="verified"){
+
     const follow=document.getElementById("followUpTime").value;
     if(!follow) return alert("Select follow-up time");
+
     updateData.stage="info";
     updateData.followUpTime=new Date(follow);
-  } else {
+
+  }
+  else if(status==="wrong_number" || status==="not_interested"){
     updateData.stage="closed";
-    updateData.status=status;
+  }
+  else{
+    updateData.stage="verification";
   }
 
   await updateDoc(doc(db,"leads",currentLead.id),updateData);
@@ -244,16 +273,29 @@ window.submitStatus = async ()=>{
   loadNextLead(auth.currentUser.uid);
   loadStats(auth.currentUser.uid);
 };
-
 document.addEventListener("change",(e)=>{
-  if(e.target.id==="status"){
-    if(e.target.value==="verified")
-      document.getElementById("followUpContainer").style.display="block";
-    else
-      document.getElementById("followUpContainer").style.display="none";
-  }
-});
 
+  if(e.target.id==="status"){
+
+    const status=e.target.value;
+
+    if(status){
+      document.getElementById("district").style.display="block";
+      document.getElementById("school").style.display="block";
+    }else{
+      document.getElementById("district").style.display="none";
+      document.getElementById("school").style.display="none";
+    }
+
+    if(status==="verified"){
+      document.getElementById("followUpContainer").style.display="block";
+    }else{
+      document.getElementById("followUpContainer").style.display="none";
+    }
+
+  }
+
+});
 </script>
 
 </body>
