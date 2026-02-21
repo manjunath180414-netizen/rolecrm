@@ -1,45 +1,129 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Cleaner Panel</title>
+  <title>Cleaner Dashboard</title>
+
   <style>
-    body { font-family: Arial; background:#f4f6f9; padding:20px; }
-    .header { display:flex; justify-content:space-between; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+    }
+
+    .sidebar {
+      width: 220px;
+      height: 100vh;
+      background: #1f2937;
+      color: white;
+      position: fixed;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 30px;
+      font-size: 20px;
+    }
+
+    .sidebar p {
+      margin: 15px 0;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .main {
+      margin-left: 240px;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logout {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+
     .card {
-      background:white;
-      padding:15px;
-      margin-top:15px;
-      border-radius:8px;
-      box-shadow:0 2px 5px rgba(0,0,0,0.1);
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     }
-    button {
-      padding:6px 10px;
-      margin-right:5px;
-      border:none;
-      border-radius:5px;
-      cursor:pointer;
+
+    .lead-card {
+      margin-top: 15px;
+      padding: 15px;
+      border-left: 5px solid #4e73df;
     }
+
+    button.action {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      margin-right: 5px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
     .green { background:#28a745; color:white; }
     .red { background:#dc3545; color:white; }
+    .orange { background:#fd7e14; color:white; }
+
   </style>
 </head>
+
 <body>
 
-<div class="header">
-  <h2>Cleaner Dashboard</h2>
-  <div id="userEmail"></div>
+<div class="sidebar">
+  <h2>CRM</h2>
+  <p>Cleaner Panel</p>
+  <p id="userEmail"></p>
 </div>
 
-<div id="leads"></div>
+<div class="main">
+
+  <div class="header">
+    <h2>Verification Dashboard</h2>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      Total Verification Leads
+      <h3 id="totalCount">0</h3>
+    </div>
+    <div class="card">
+      Remaining
+      <h3 id="remainingCount">0</h3>
+    </div>
+  </div>
+
+  <div id="leadsContainer"></div>
+
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, updateDoc, doc } 
+import { getAuth, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyA7gt9nQeW6XXADCCoMLaKPWS6Z3YcF-ls",
@@ -56,34 +140,73 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return location.href="index.html";
+
+  if (!user) return location.href = "index.html";
+
+  const userSnap = await getDoc(doc(db,"users",user.uid));
+
+  if (!userSnap.exists() || userSnap.data().role !== "cleaner") {
+    alert("Access Denied");
+    return location.href = "index.html";
+  }
 
   document.getElementById("userEmail").innerText = user.email;
+
+  loadLeads();
+});
+
+async function loadLeads(){
 
   const q = query(collection(db,"leads"), where("stage","==","verification"));
   const snap = await getDocs(q);
 
+  let count = 0;
+  const container = document.getElementById("leadsContainer");
+  container.innerHTML = "";
+
   snap.forEach(d=>{
+    count++;
     const data = d.data();
-    document.getElementById("leads").innerHTML += `
-      <div class="card">
+
+    container.innerHTML += `
+      <div class="card lead-card">
         <b>${data.studentName}</b><br>
-        ${data.phone}<br><br>
-        <button class="green" onclick="updateStage('${d.id}','info')">Verified</button>
-        <button class="red" onclick="updateStage('${d.id}','closed')">Wrong</button>
+        ${data.phone}<br>
+        Status: ${data.status || "New"}<br><br>
+
+        <button class="action green" onclick="updateStage('${d.id}','info')">Verified</button>
+        <button class="action red" onclick="updateStage('${d.id}','closed')">Wrong</button>
+        <button class="action orange" onclick="updateStatus('${d.id}','Switch Off')">Switch Off</button>
       </div>
     `;
   });
-});
 
-window.updateStage = async(id,stage)=>{
+  document.getElementById("totalCount").innerText = count;
+  document.getElementById("remainingCount").innerText = count;
+}
+
+window.updateStage = async (id,newStage)=>{
   await updateDoc(doc(db,"leads",id),{
-    stage:stage,
+    stage:newStage,
     updatedAt:new Date()
   });
-  location.reload();
+  loadLeads();
+};
+
+window.updateStatus = async (id,status)=>{
+  await updateDoc(doc(db,"leads",id),{
+    status:status,
+    updatedAt:new Date()
+  });
+  loadLeads();
+};
+
+window.logout = async ()=>{
+  await signOut(auth);
+  location.href = "index.html";
 };
 
 </script>
+
 </body>
 </html>
