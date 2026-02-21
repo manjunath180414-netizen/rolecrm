@@ -30,10 +30,15 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
+  apiKey: "AIzaSyA7gt9nQeW6XXADCCoMLaKPWS6Z3YcF-ls",
+  authDomain: "rolecrm-dc37a.firebaseapp.com",
+  projectId: "rolecrm-dc37a",
+  storageBucket: "rolecrm-dc37a.firebasestorage.app",
+  messagingSenderId: "273390543342",
+  appId: "1:273390543342:web:2d9d677a3b58f15d26aeff",
+  measurementId: "G-FE1N5RJ8PK"
 };
 
 const app = initializeApp(firebaseConfig);
