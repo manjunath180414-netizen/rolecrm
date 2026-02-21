@@ -14,14 +14,14 @@
     }
 
     h2{
-      margin-bottom:10px;
+      margin-bottom:15px;
     }
 
     .cleaner-list{
       display:flex;
       flex-wrap:wrap;
       gap:10px;
-      margin-bottom:20px;
+      margin-bottom:25px;
     }
 
     .cleaner-btn{
@@ -35,7 +35,7 @@
 
     .stats{
       display:grid;
-      grid-template-columns:repeat(4,1fr);
+      grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
       gap:15px;
     }
 
@@ -43,14 +43,14 @@
       background:white;
       padding:20px;
       border-radius:12px;
-      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+      box-shadow:0 8px 20px rgba(0,0,0,0.08);
       text-align:center;
     }
 
     .card h3{
       margin:5px 0;
+      font-size:22px;
     }
-
   </style>
 </head>
 <body>
@@ -62,7 +62,6 @@
   <div class="cleaner-list" id="cleanerList"></div>
 
   <div class="stats" id="statsSection" style="display:none;">
-
     <div class="card">
       Assigned
       <h3 id="assigned">0</h3>
@@ -74,7 +73,7 @@
     </div>
 
     <div class="card">
-      Verified (Moved to Info)
+      Verified (Info Stage)
       <h3 id="verified">0</h3>
     </div>
 
@@ -102,7 +101,6 @@
       Call Back
       <h3 id="callBack">0</h3>
     </div>
-
   </div>
 
 </div>
@@ -110,29 +108,22 @@
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, query, where, getDocs } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyA7gt9nQeW6XXADCCoMLaKPWS6Z3YcF-ls",
   authDomain: "rolecrm-dc37a.firebaseapp.com",
   projectId: "rolecrm-dc37a",
   storageBucket: "rolecrm-dc37a.firebasestorage.app",
   messagingSenderId: "273390543342",
-  appId: "1:273390543342:web:2d9d677a3b58f15d26aeff",
-  measurementId: "G-FE1N5RJ8PK"
+  appId: "1:273390543342:web:2d9d677a3b58f15d26aeff"
 };
+
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
 
-let currentCleaner = null;
-
-onAuthStateChanged(auth,(user)=>{
-  if(!user) return location.href="index.html";
-  loadCleaners();
-});
+loadCleaners();
 
 async function loadCleaners(){
 
@@ -141,10 +132,10 @@ async function loadCleaners(){
   list.innerHTML="";
 
   snap.forEach(d=>{
-    if(d.data().role==="cleaner"){
-      list.innerHTML+=`
+    if(d.data().role === "cleaner"){
+      list.innerHTML += `
         <button class="cleaner-btn"
-          onclick="loadStats('${d.id}','${d.data().email}')">
+          onclick="loadStats('${d.id}')">
           ${d.data().email}
         </button>
       `;
@@ -152,9 +143,8 @@ async function loadCleaners(){
   });
 }
 
-window.loadStats = (cleanerId,email)=>{
+window.loadStats = (cleanerId)=>{
 
-  currentCleaner = cleanerId;
   document.getElementById("statsSection").style.display="grid";
 
   const q = query(
@@ -177,14 +167,14 @@ window.loadStats = (cleanerId,email)=>{
       const data=doc.data();
       assigned++;
 
-      if(data.stage==="verification") verification++;
-      if(data.stage==="info") verified++;
+      if(data.stage === "verification") verification++;
+      if(data.stage === "info") verified++;
 
-      if(data.status==="not_interested") notInterested++;
-      if(data.status==="not_receiving") notReceiving++;
-      if(data.status==="switch_off") switchOff++;
-      if(data.status==="wrong_number") wrongNumber++;
-      if(data.stage==="call_back") callBack++;
+      if(data.status === "not_interested") notInterested++;
+      if(data.status === "not_receiving") notReceiving++;
+      if(data.status === "switch_off") switchOff++;
+      if(data.status === "wrong_number") wrongNumber++;
+      if(data.stage === "call_back") callBack++;
     });
 
     document.getElementById("assigned").innerText=assigned;
@@ -197,6 +187,7 @@ window.loadStats = (cleanerId,email)=>{
     document.getElementById("callBack").innerText=callBack;
 
   });
+
 };
 
 </script>
