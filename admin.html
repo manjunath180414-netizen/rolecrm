@@ -3,74 +3,61 @@
 <head>
   <title>Admin Panel</title>
   <style>
-    body { font-family: Arial; background:#f4f6f9; padding:20px; }
-    h2 { margin-bottom:10px; }
-    .top { display:flex; justify-content:space-between; align-items:center; }
-    .card {
+    body{margin:0;font-family:Arial;background:#f4f6f9;}
+    .container{padding:20px;}
+    .card{
       background:white;
-      padding:15px;
-      margin:10px 0;
-      border-radius:8px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      padding:20px;
+      border-radius:10px;
+      margin-top:20px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.08);
     }
-    input, select {
-      padding:6px;
+    input,select{
+      padding:8px;
       margin:5px;
     }
-    button {
-      padding:6px 12px;
+    button{
+      padding:8px 12px;
       border:none;
       border-radius:6px;
       cursor:pointer;
-      background:#007bff;
+      background:#2563eb;
       color:white;
     }
-    .danger { background:#dc3545; }
-    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
   </style>
 </head>
 <body>
 
-<div class="top">
+<div class="container">
+
   <h2>Admin Dashboard</h2>
-  <div id="userEmail"></div>
+  <p id="userEmail"></p>
+
+  <!-- CSV Upload -->
+  <div class="card">
+    <h3>Bulk Upload CSV</h3>
+    <input type="file" id="csvFile" accept=".csv"><br><br>
+
+    Assign To:
+    <select id="assignType">
+      <option value="equal">Distribute Equally</option>
+      <option value="specific">Assign Specific Cleaner</option>
+    </select>
+
+    <select id="cleanerSelect"></select>
+
+    <br><br>
+    <button onclick="uploadCSV()">Upload Leads</button>
+  </div>
+
 </div>
-
-<h3>Statistics</h3>
-<div class="stats">
-  <div class="card">Total Leads: <span id="total"></span></div>
-  <div class="card">Verification: <span id="verification"></span></div>
-  <div class="card">Info: <span id="info"></span></div>
-  <div class="card">WhatsApp: <span id="whatsapp"></span></div>
-  <div class="card">Closed: <span id="closed"></span></div>
-  <div class="card">Revenue: ₹<span id="revenue"></span></div>
-</div>
-
-<h3>Create / Update User</h3>
-<div class="card">
-  Email: <input id="email">
-  Role:
-  <select id="role">
-    <option value="cleaner">Cleaner</option>
-    <option value="info">Info</option>
-    <option value="final">Final</option>
-    <option value="admin">Admin</option>
-    <option value="disabled">Disabled</option>
-  </select>
-  <button onclick="saveUser()">Save</button>
-</div>
-
-<h3>All Users</h3>
-<div id="users"></div>
-
-<h3>Download Report</h3>
-<button onclick="downloadCSV()">Download CSV</button>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc } 
+import { getAuth, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -88,99 +75,84 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-onAuthStateChanged(auth, async (user)=>{
+let cleaners = [];
+let roundRobinIndex = 0;
 
+onAuthStateChanged(auth, async(user)=>{
   if(!user) return location.href="index.html";
 
-  const userSnap = await getDoc(doc(db,"users",user.uid));
-
-  if(!userSnap.exists() || userSnap.data().role !== "admin"){
-    alert("Access Denied");
+  const snap = await getDoc(doc(db,"users",user.uid));
+  if(!snap.exists() || snap.data().role !== "admin")
     return location.href="index.html";
-  }
 
   document.getElementById("userEmail").innerText=user.email;
 
-  loadStats();
-  loadUsers();
+  loadCleaners();
 });
 
-async function loadStats(){
-
-  const snap = await getDocs(collection(db,"leads"));
-
-  let total=0, verification=0, info=0, whatsapp=0, closed=0, revenue=0;
+async function loadCleaners(){
+  const snap = await getDocs(collection(db,"users"));
+  const select = document.getElementById("cleanerSelect");
+  select.innerHTML="";
 
   snap.forEach(d=>{
-    total++;
-    const data=d.data();
-    if(data.stage==="verification") verification++;
-    if(data.stage==="info") info++;
-    if(data.stage==="whatsapp") whatsapp++;
-    if(data.stage==="closed") closed++;
-    if(data.amount) revenue+=Number(data.amount);
-  });
-
-  document.getElementById("total").innerText=total;
-  document.getElementById("verification").innerText=verification;
-  document.getElementById("info").innerText=info;
-  document.getElementById("whatsapp").innerText=whatsapp;
-  document.getElementById("closed").innerText=closed;
-  document.getElementById("revenue").innerText=revenue;
-}
-
-async function loadUsers(){
-
-  const snap = await getDocs(collection(db,"users"));
-  const container=document.getElementById("users");
-  container.innerHTML="";
-
-  snap.forEach(d=>{
-    const data=d.data();
-    container.innerHTML+=`
-      <div class="card">
-        ${data.email} - ${data.role}
-      </div>
-    `;
-  });
-}
-
-window.saveUser = async()=>{
-
-  const email=document.getElementById("email").value;
-  const role=document.getElementById("role").value;
-
-  const snap = await getDocs(collection(db,"users"));
-
-  snap.forEach(async(d)=>{
-    if(d.data().email===email){
-      await setDoc(doc(db,"users",d.id),{
-        ...d.data(),
-        role:role
-      });
-      alert("Updated");
-      loadUsers();
+    if(d.data().role==="cleaner"){
+      cleaners.push({uid:d.id,email:d.data().email});
+      select.innerHTML+=`<option value="${d.id}">${d.data().email}</option>`;
     }
   });
-};
+}
 
-window.downloadCSV = async()=>{
+window.uploadCSV = async ()=>{
 
-  const snap = await getDocs(collection(db,"leads"));
+  const file = document.getElementById("csvFile").files[0];
+  if(!file) return alert("Upload CSV file");
 
-  let csv="Name,Phone,Stage,Amount\n";
+  const text = await file.text();
+  const rows = text.split("\n").map(r=>r.split(","));
 
-  snap.forEach(d=>{
-    const data=d.data();
-    csv+=`${data.studentName},${data.phone},${data.stage},${data.amount||0}\n`;
-  });
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
 
-  const blob=new Blob([csv],{type:"text/csv"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="report.csv";
-  a.click();
+  const nameIndex = headers.findIndex(h =>
+    h.includes("name")
+  );
+
+  const phoneIndex = headers.findIndex(h =>
+    h.includes("phone") || h.includes("number")
+  );
+
+  if(nameIndex === -1 || phoneIndex === -1)
+    return alert("Name or Phone column not found");
+
+  const assignType = document.getElementById("assignType").value;
+
+  for(let i=1;i<rows.length;i++){
+
+    const cols = rows[i];
+    if(!cols[nameIndex] || !cols[phoneIndex]) continue;
+
+    let assignedCleaner = null;
+
+    if(assignType === "specific"){
+      assignedCleaner = document.getElementById("cleanerSelect").value;
+    } else {
+      assignedCleaner = cleaners[roundRobinIndex % cleaners.length].uid;
+      roundRobinIndex++;
+    }
+
+    await addDoc(collection(db,"leads"),{
+      studentName: cols[nameIndex].trim(),
+      phone: cols[phoneIndex].trim(),
+      stage: "verification",
+      status: "New",
+      amount: 0,
+      assignedCleaner: assignedCleaner,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+  }
+
+  alert("Bulk Upload Completed");
 };
 
 </script>
