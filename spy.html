@@ -1,52 +1,119 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Spy Dashboard</title>
+  <title>Cleaner Performance Dashboard</title>
   <style>
-    body{font-family:Arial;background:#f4f6f9;margin:0;padding:20px;}
-    table{
-      width:100%;
-      border-collapse:collapse;
+    body{
+      margin:0;
+      font-family:Arial;
+      background:#f4f6f9;
+    }
+
+    .container{
+      padding:20px;
+    }
+
+    h2{
+      margin-bottom:10px;
+    }
+
+    .cleaner-list{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom:20px;
+    }
+
+    .cleaner-btn{
+      padding:10px 15px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:15px;
+    }
+
+    .card{
       background:white;
-      margin-top:20px;
+      padding:20px;
+      border-radius:12px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.08);
+      text-align:center;
     }
-    th,td{
-      padding:10px;
-      border-bottom:1px solid #ddd;
-      text-align:left;
-      font-size:13px;
+
+    .card h3{
+      margin:5px 0;
     }
-    th{background:#f1f5f9;}
-    .idle{color:red;font-weight:bold;}
+
   </style>
 </head>
 <body>
 
-<h2>Agent Activity Monitor</h2>
+<div class="container">
 
-<select id="agentSelect"></select>
+  <h2>Cleaner Performance (Live)</h2>
 
-<table>
-  <thead>
-    <tr>
-      <th>Lead Name</th>
-      <th>Copied At</th>
-      <th>Submitted At</th>
-      <th>Call Duration</th>
-      <th>Idle Before Next</th>
-    </tr>
-  </thead>
-  <tbody id="activityTable"></tbody>
-</table>
+  <div class="cleaner-list" id="cleanerList"></div>
+
+  <div class="stats" id="statsSection" style="display:none;">
+
+    <div class="card">
+      Assigned
+      <h3 id="assigned">0</h3>
+    </div>
+
+    <div class="card">
+      Verification Pending
+      <h3 id="verification">0</h3>
+    </div>
+
+    <div class="card">
+      Verified (Moved to Info)
+      <h3 id="verified">0</h3>
+    </div>
+
+    <div class="card">
+      Not Interested
+      <h3 id="notInterested">0</h3>
+    </div>
+
+    <div class="card">
+      Not Receiving
+      <h3 id="notReceiving">0</h3>
+    </div>
+
+    <div class="card">
+      Switch Off
+      <h3 id="switchOff">0</h3>
+    </div>
+
+    <div class="card">
+      Wrong Number
+      <h3 id="wrongNumber">0</h3>
+    </div>
+
+    <div class="card">
+      Call Back
+      <h3 id="callBack">0</h3>
+    </div>
+
+  </div>
+
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, query, where } 
+import { getFirestore, collection, onSnapshot, query, where, getDocs } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyA7gt9nQeW6XXADCCoMLaKPWS6Z3YcF-ls",
   authDomain: "rolecrm-dc37a.firebaseapp.com",
@@ -60,81 +127,77 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let userMap = {};
+let currentCleaner = null;
 
-onAuthStateChanged(auth, async(user)=>{
-  if(!user) location.href="index.html";
-
-  loadAgents();
+onAuthStateChanged(auth,(user)=>{
+  if(!user) return location.href="index.html";
+  loadCleaners();
 });
 
-async function loadAgents(){
+async function loadCleaners(){
+
   const snap = await getDocs(collection(db,"users"));
-  const select = document.getElementById("agentSelect");
-  select.innerHTML="";
+  const list = document.getElementById("cleanerList");
+  list.innerHTML="";
 
   snap.forEach(d=>{
     if(d.data().role==="cleaner"){
-      userMap[d.id]=d.data().email;
-      select.innerHTML+=`<option value="${d.id}">${d.data().email}</option>`;
+      list.innerHTML+=`
+        <button class="cleaner-btn"
+          onclick="loadStats('${d.id}','${d.data().email}')">
+          ${d.data().email}
+        </button>
+      `;
     }
   });
-
-  select.onchange=()=>loadActivity(select.value);
-
-  if(select.value) loadActivity(select.value);
 }
 
-async function loadActivity(agentId){
+window.loadStats = (cleanerId,email)=>{
 
-  const q=query(
+  currentCleaner = cleanerId;
+  document.getElementById("statsSection").style.display="grid";
+
+  const q = query(
     collection(db,"leads"),
-    where("assignedCleaner","==",agentId)
+    where("assignedCleaner","==",cleanerId)
   );
 
-  const snap=await getDocs(q);
+  onSnapshot(q,(snapshot)=>{
 
-  let activities=[];
+    let assigned=0;
+    let verification=0;
+    let verified=0;
+    let notInterested=0;
+    let notReceiving=0;
+    let switchOff=0;
+    let wrongNumber=0;
+    let callBack=0;
 
-  snap.forEach(d=>{
-    const data=d.data();
-    if(data.callStartTime && data.callEndTime){
-      activities.push({
-        name:data.studentName,
-        start:new Date(data.callStartTime.seconds*1000),
-        end:new Date(data.callEndTime.seconds*1000),
-        duration:data.callDuration || 0
-      });
-    }
+    snapshot.forEach(doc=>{
+      const data=doc.data();
+      assigned++;
+
+      if(data.stage==="verification") verification++;
+      if(data.stage==="info") verified++;
+
+      if(data.status==="not_interested") notInterested++;
+      if(data.status==="not_receiving") notReceiving++;
+      if(data.status==="switch_off") switchOff++;
+      if(data.status==="wrong_number") wrongNumber++;
+      if(data.stage==="call_back") callBack++;
+    });
+
+    document.getElementById("assigned").innerText=assigned;
+    document.getElementById("verification").innerText=verification;
+    document.getElementById("verified").innerText=verified;
+    document.getElementById("notInterested").innerText=notInterested;
+    document.getElementById("notReceiving").innerText=notReceiving;
+    document.getElementById("switchOff").innerText=switchOff;
+    document.getElementById("wrongNumber").innerText=wrongNumber;
+    document.getElementById("callBack").innerText=callBack;
+
   });
-
-  activities.sort((a,b)=>a.start-b.start);
-
-  const table=document.getElementById("activityTable");
-  table.innerHTML="";
-
-  for(let i=0;i<activities.length;i++){
-
-    let idle="-";
-
-    if(i<activities.length-1){
-      const diff=(activities[i+1].start - activities[i].end)/1000;
-      idle=Math.floor(diff)+" sec";
-    }
-
-    table.innerHTML+=`
-      <tr>
-        <td>${activities[i].name}</td>
-        <td>${activities[i].start.toLocaleTimeString()}</td>
-        <td>${activities[i].end.toLocaleTimeString()}</td>
-        <td>${activities[i].duration} sec</td>
-        <td class="${idle!=='-' && parseInt(idle)>60?'idle':''}">
-          ${idle}
-        </td>
-      </tr>
-    `;
-  }
-}
+};
 
 </script>
 
