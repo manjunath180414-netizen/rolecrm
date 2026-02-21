@@ -500,10 +500,15 @@ window.showDuplicates = async () => {
 
   function loadCleanerPerformance(){
 
+  function formatTime(seconds){
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins + "m " + secs + "s";
+  }
+
   onSnapshot(collection(db,"leads"), async (leadSnapshot)=>{
 
     const userSnap = await getDocs(collection(db,"users"));
-
     const performanceMap = {};
 
     // Prepare cleaner map
@@ -519,14 +524,14 @@ window.showDuplicates = async () => {
           notReceiving:0,
           switchOff:0,
           wrongNumber:0,
-          callBack:0
-          totalTalkTime: 0,
-          callCount: 0
+          callBack:0,
+          totalTalkTime:0,
+          callCount:0
         };
       }
     });
 
-    // Loop through leads
+    // Loop leads
     leadSnapshot.forEach(doc=>{
       const data = doc.data();
       const cleanerId = data.assignedCleaner;
@@ -564,44 +569,41 @@ window.showDuplicates = async () => {
       if(data.status === "wrong_number"){
         performanceMap[cleanerId].wrongNumber++;
       }
+
       if(data.callDuration){
-  performanceMap[cleanerId].totalTalkTime += Number(data.callDuration);
-  performanceMap[cleanerId].callCount++;
+        performanceMap[cleanerId].totalTalkTime += Number(data.callDuration);
+        performanceMap[cleanerId].callCount++;
       }
+
     });
-function formatTime(seconds){
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return mins + "m " + secs + "s";
-      }
-    // Render Table
+
     const table = document.getElementById("performanceTable");
     table.innerHTML="";
 
     for(const cleanerId in performanceMap){
 
       const p = performanceMap[cleanerId];
-
       const avg = p.callCount > 0 
-  ? Math.floor(p.totalTalkTime / p.callCount)
-  : 0;
+        ? Math.floor(p.totalTalkTime / p.callCount)
+        : 0;
 
-table.innerHTML += `
-<tr>
-  <td>${p.email}</td>
-  <td>${p.assigned}</td>
-  <td>${p.pending}</td>
-  <td>${p.attempted}</td>
-  <td>${p.verified}</td>
-  <td>${p.notInterested}</td>
-  <td>${p.notReceiving}</td>
-  <td>${p.switchOff}</td>
-  <td>${p.wrongNumber}</td>
-  <td>${p.callBack}</td>
-  <td>${formatTime(p.totalTalkTime)}</td>
-  <td>${formatTime(avg)}</td>
-</tr>
-`;
+      table.innerHTML += `
+        <tr>
+          <td>${p.email}</td>
+          <td>${p.assigned}</td>
+          <td>${p.pending}</td>
+          <td>${p.attempted}</td>
+          <td>${p.verified}</td>
+          <td>${p.notInterested}</td>
+          <td>${p.notReceiving}</td>
+          <td>${p.switchOff}</td>
+          <td>${p.wrongNumber}</td>
+          <td>${p.callBack}</td>
+          <td>${formatTime(p.totalTalkTime)}</td>
+          <td>${formatTime(avg)}</td>
+        </tr>
+      `;
+    }
 
   });
   }
