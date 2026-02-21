@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Panel</title>
+  <title>Admin CRM</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
   <style>
-    body{margin:0;font-family:Arial;background:#f4f6f9;}
+    body{margin:0;font-family:Arial;background:#eef2f7;}
     .container{padding:20px;}
+    h2{margin-bottom:10px;}
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:15px;
+    }
+
     .card{
       background:white;
       padding:20px;
-      border-radius:10px;
-      margin-top:20px;
+      border-radius:12px;
       box-shadow:0 10px 25px rgba(0,0,0,0.08);
     }
+
     input,select{
       padding:8px;
       margin:5px;
     }
+
     button{
       padding:8px 12px;
       border:none;
@@ -24,40 +35,104 @@
       background:#2563eb;
       color:white;
     }
+
+    table{
+      width:100%;
+      margin-top:15px;
+      border-collapse:collapse;
+      background:white;
+      border-radius:10px;
+      overflow:hidden;
+    }
+
+    th,td{
+      padding:10px;
+      border-bottom:1px solid #ddd;
+      text-align:left;
+      font-size:13px;
+    }
+
+    th{background:#f1f5f9;}
   </style>
 </head>
 <body>
 
 <div class="container">
 
-  <h2>Admin Dashboard</h2>
-  <p id="userEmail"></p>
+<h2>Admin Dashboard</h2>
+<p id="userEmail"></p>
 
-  <!-- CSV Upload -->
-  <div class="card">
-    <h3>Bulk Upload CSV</h3>
-    <input type="file" id="csvFile" accept=".csv"><br><br>
+<!-- STATS -->
+<div class="stats">
+  <div class="card">Total Leads <h3 id="total">0</h3></div>
+  <div class="card">Verification <h3 id="verification">0</h3></div>
+  <div class="card">Info Stage <h3 id="infoStage">0</h3></div>
+  <div class="card">Closed <h3 id="closed">0</h3></div>
+</div>
 
-    Assign To:
-    <select id="assignType">
-      <option value="equal">Distribute Equally</option>
-      <option value="specific">Assign Specific Cleaner</option>
-    </select>
+<!-- BULK UPLOAD -->
+<div class="card" style="margin-top:20px;">
+  <h3>Bulk Upload (CSV / Excel)</h3>
+  <input type="file" id="fileInput" accept=".csv,.xlsx"><br><br>
 
-    <select id="cleanerSelect"></select>
+  Assign To:
+  <select id="assignType">
+    <option value="equal">Distribute Equally</option>
+    <option value="specific">Assign Specific Cleaner</option>
+  </select>
 
-    <br><br>
-    <button onclick="uploadCSV()">Upload Leads</button>
-  </div>
+  <select id="cleanerSelect"></select>
+
+  <br><br>
+  <button onclick="handleUpload()">Upload</button>
+</div>
+
+<!-- SEARCH -->
+<div class="card">
+  <h3>Search Leads</h3>
+  <input type="text" id="searchInput" placeholder="Search name or phone" onkeyup="filterLeads()">
+</div>
+
+<!-- LEADS TABLE -->
+<div class="card">
+  <h3>All Leads (Live)</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Stage</th>
+        <th>Status</th>
+        <th>Assigned</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="leadTable"></tbody>
+  </table>
+</div>
+
+<!-- USER ROLE MANAGEMENT -->
+<div class="card">
+  <h3>User Management</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Change Role</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+</div>
 
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc } 
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, where } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -71,29 +146,26 @@ const firebaseConfig = {
   measurementId: "G-FE1N5RJ8PK"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
 
-let cleaners = [];
-let roundRobinIndex = 0;
+let cleaners=[];
+let roundRobinIndex=0;
 
-onAuthStateChanged(auth, async(user)=>{
+onAuthStateChanged(auth,async(user)=>{
   if(!user) return location.href="index.html";
-
-  const snap = await getDoc(doc(db,"users",user.uid));
-  if(!snap.exists() || snap.data().role !== "admin")
-    return location.href="index.html";
-
   document.getElementById("userEmail").innerText=user.email;
-
   loadCleaners();
+  loadLeadsLive();
+  loadUsers();
 });
 
 async function loadCleaners(){
-  const snap = await getDocs(collection(db,"users"));
-  const select = document.getElementById("cleanerSelect");
+  const snap=await getDocs(collection(db,"users"));
+  const select=document.getElementById("cleanerSelect");
   select.innerHTML="";
+  cleaners=[];
 
   snap.forEach(d=>{
     if(d.data().role==="cleaner"){
@@ -103,56 +175,138 @@ async function loadCleaners(){
   });
 }
 
-window.uploadCSV = async ()=>{
+function normalizeHeader(str){
+  return str.toLowerCase().replace(/\s+/g,'');
+}
 
-  const file = document.getElementById("csvFile").files[0];
-  if(!file) return alert("Upload CSV file");
+window.handleUpload=async()=>{
+  const file=document.getElementById("fileInput").files[0];
+  if(!file) return alert("Upload file");
 
-  const text = await file.text();
-  const rows = text.split("\n").map(r=>r.split(","));
+  const data=await file.arrayBuffer();
+  const workbook=XLSX.read(data);
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const json=XLSX.utils.sheet_to_json(sheet,{defval:""});
 
-  const headers = rows[0].map(h=>h.trim().toLowerCase());
+  for(const row of json){
 
-  const nameIndex = headers.findIndex(h =>
-    h.includes("name")
-  );
+    const keys=Object.keys(row);
+    let name="",phone="";
 
-  const phoneIndex = headers.findIndex(h =>
-    h.includes("phone") || h.includes("number")
-  );
+    for(const key of keys){
+      const normalized=normalizeHeader(key);
 
-  if(nameIndex === -1 || phoneIndex === -1)
-    return alert("Name or Phone column not found");
+      if(normalized.includes("name"))
+        name=row[key];
 
-  const assignType = document.getElementById("assignType").value;
+      if(normalized.includes("phone") || normalized.includes("number"))
+        phone=row[key];
+    }
 
-  for(let i=1;i<rows.length;i++){
+    if(!name || !phone) continue;
 
-    const cols = rows[i];
-    if(!cols[nameIndex] || !cols[phoneIndex]) continue;
+    phone=String(phone).trim();
 
-    let assignedCleaner = null;
+    // 🔥 DUPLICATE CHECK
+    const q=query(collection(db,"leads"),where("phone","==",phone));
+    const snap=await getDocs(q);
+    if(!snap.empty) continue;
 
-    if(assignType === "specific"){
-      assignedCleaner = document.getElementById("cleanerSelect").value;
-    } else {
-      assignedCleaner = cleaners[roundRobinIndex % cleaners.length].uid;
+    let assignedCleaner=null;
+    const assignType=document.getElementById("assignType").value;
+
+    if(assignType==="specific"){
+      assignedCleaner=document.getElementById("cleanerSelect").value;
+    }else{
+      assignedCleaner=cleaners[roundRobinIndex%cleaners.length].uid;
       roundRobinIndex++;
     }
 
     await addDoc(collection(db,"leads"),{
-      studentName: cols[nameIndex].trim(),
-      phone: cols[phoneIndex].trim(),
-      stage: "verification",
-      status: "New",
-      amount: 0,
-      assignedCleaner: assignedCleaner,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      studentName:name,
+      phone:phone,
+      stage:"verification",
+      status:"New",
+      assignedCleaner:assignedCleaner,
+      createdAt:new Date(),
+      updatedAt:new Date()
     });
   }
 
-  alert("Bulk Upload Completed");
+  alert("Upload Completed (Duplicates Skipped)");
+};
+
+function loadLeadsLive(){
+  onSnapshot(collection(db,"leads"),(snapshot)=>{
+    const table=document.getElementById("leadTable");
+    table.innerHTML="";
+    let total=0,verification=0,info=0,closed=0;
+
+    snapshot.forEach(d=>{
+      const data=d.data();
+      total++;
+
+      if(data.stage==="verification") verification++;
+      if(data.stage==="info") info++;
+      if(data.stage==="closed") closed++;
+
+      table.innerHTML+=`
+        <tr>
+          <td>${data.studentName}</td>
+          <td>${data.phone}</td>
+          <td>${data.stage}</td>
+          <td>${data.status||""}</td>
+          <td>${data.assignedCleaner||""}</td>
+          <td><button onclick="deleteLead('${d.id}')">Delete</button></td>
+        </tr>
+      `;
+    });
+
+    document.getElementById("total").innerText=total;
+    document.getElementById("verification").innerText=verification;
+    document.getElementById("infoStage").innerText=info;
+    document.getElementById("closed").innerText=closed;
+  });
+}
+
+window.deleteLead=async(id)=>{
+  await deleteDoc(doc(db,"leads",id));
+};
+
+async function loadUsers(){
+  const snap=await getDocs(collection(db,"users"));
+  const table=document.getElementById("userTable");
+  table.innerHTML="";
+
+  snap.forEach(d=>{
+    table.innerHTML+=`
+      <tr>
+        <td>${d.data().email}</td>
+        <td>${d.data().role}</td>
+        <td>
+          <select onchange="changeRole('${d.id}',this.value)">
+            <option value="cleaner">cleaner</option>
+            <option value="info">info</option>
+            <option value="final">final</option>
+            <option value="admin">admin</option>
+            <option value="disabled">disabled</option>
+          </select>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+window.changeRole=async(id,role)=>{
+  await updateDoc(doc(db,"users",id),{role:role});
+};
+
+window.filterLeads=()=>{
+  const input=document.getElementById("searchInput").value.toLowerCase();
+  const rows=document.querySelectorAll("#leadTable tr");
+  rows.forEach(row=>{
+    row.style.display=row.innerText.toLowerCase().includes(input)?"":"none";
+  });
 };
 
 </script>
