@@ -187,6 +187,7 @@ onAuthStateChanged(auth,async(user)=>{
   loadCleaners();
   loadLeadsLive();
   loadUsers();
+  loadCleanerPerformance();
 });
 
 async function loadCleaners(){
@@ -494,6 +495,99 @@ window.showDuplicates = async () => {
 
   alert(`${count} Leads Assigned Successfully`);
 };
+
+  function loadCleanerPerformance(){
+
+  onSnapshot(collection(db,"leads"), async (leadSnapshot)=>{
+
+    const userSnap = await getDocs(collection(db,"users"));
+
+    const performanceMap = {};
+
+    // Prepare cleaner map
+    userSnap.forEach(u=>{
+      if(u.data().role === "cleaner"){
+        performanceMap[u.id] = {
+          email: u.data().email,
+          assigned:0,
+          pending:0,
+          attempted:0,
+          verified:0,
+          notInterested:0,
+          notReceiving:0,
+          switchOff:0,
+          wrongNumber:0,
+          callBack:0
+        };
+      }
+    });
+
+    // Loop through leads
+    leadSnapshot.forEach(doc=>{
+      const data = doc.data();
+      const cleanerId = data.assignedCleaner;
+
+      if(!performanceMap[cleanerId]) return;
+
+      performanceMap[cleanerId].assigned++;
+
+      if(data.stage === "verification"){
+        performanceMap[cleanerId].pending++;
+      } else {
+        performanceMap[cleanerId].attempted++;
+      }
+
+      if(data.stage === "info"){
+        performanceMap[cleanerId].verified++;
+      }
+
+      if(data.stage === "call_back"){
+        performanceMap[cleanerId].callBack++;
+      }
+
+      if(data.status === "not_interested"){
+        performanceMap[cleanerId].notInterested++;
+      }
+
+      if(data.status === "not_receiving"){
+        performanceMap[cleanerId].notReceiving++;
+      }
+
+      if(data.status === "switch_off"){
+        performanceMap[cleanerId].switchOff++;
+      }
+
+      if(data.status === "wrong_number"){
+        performanceMap[cleanerId].wrongNumber++;
+      }
+    });
+
+    // Render Table
+    const table = document.getElementById("performanceTable");
+    table.innerHTML="";
+
+    for(const cleanerId in performanceMap){
+
+      const p = performanceMap[cleanerId];
+
+      table.innerHTML += `
+        <tr>
+          <td>${p.email}</td>
+          <td>${p.assigned}</td>
+          <td>${p.pending}</td>
+          <td>${p.attempted}</td>
+          <td>${p.verified}</td>
+          <td>${p.notInterested}</td>
+          <td>${p.notReceiving}</td>
+          <td>${p.switchOff}</td>
+          <td>${p.wrongNumber}</td>
+          <td>${p.callBack}</td>
+        </tr>
+      `;
+    }
+
+  });
+  }
 </script>
 
 </body>
