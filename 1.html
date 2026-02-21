@@ -161,7 +161,7 @@ async function loadNextLead(uid){
 
   const q=query(
     collection(db,"leads"),
-    where("stage","==","verification"),
+    where("stage","in",["verification"])
     where("assignedCleaner","==",uid)
   );
 
@@ -263,8 +263,8 @@ window.submitStatus = async ()=>{
   else if(status==="wrong_number" || status==="not_interested"){
     updateData.stage="closed";
   }
-  else{
-    updateData.stage="verification";
+  else if(status==="not_receiving" || status==="switch_off"){
+  updateData.stage = "call_back";  // new stage
   }
 
   await updateDoc(doc(db,"leads",currentLead.id),updateData);
