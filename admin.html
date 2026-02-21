@@ -65,9 +65,10 @@
 <!-- STATS -->
 <div class="stats">
   <div class="card">Total Leads <h3 id="total">0</h3></div>
-  <div class="card">Verification <h3 id="verification">0</h3></div>
-  <div class="card">Info Stage <h3 id="infoStage">0</h3></div>
-  <div class="card">Closed <h3 id="closed">0</h3></div>
+  <div class="card">Verification Pending <h3 id="verification">0</h3></div>
+  <div class="card">Verified (Info Stage) <h3 id="infoStage">0</h3></div>
+  <div class="card">Information Pending <h3 id="closed">0</h3></div>
+  <div class="card">Final Updated <h3 id="finalCard">0</h3></div>
 </div>
 
 <!-- BULK UPLOAD -->
@@ -235,37 +236,58 @@ window.handleUpload=async()=>{
 
   alert("Upload Completed (Duplicates Skipped)");
 };
-
 function loadLeadsLive(){
+
   onSnapshot(collection(db,"leads"),(snapshot)=>{
+
     const table=document.getElementById("leadTable");
     table.innerHTML="";
-    let total=0,verification=0,info=0,closed=0;
+
+    let total=0;
+    let verificationPending=0;
+    let verified=0;
+    let informationPending=0;
+    let finalUpdated=0;
 
     snapshot.forEach(d=>{
+
       const data=d.data();
       total++;
 
-      if(data.stage==="verification") verification++;
-      if(data.stage==="info") info++;
-      if(data.stage==="closed") closed++;
+      if(data.stage==="verification"){
+        verificationPending++;
+      }
+
+      if(data.stage==="info"){
+        verified++;
+
+        if(!data.infoStatus){
+          informationPending++;
+        }
+      }
+
+      if(data.stage==="final"){
+        finalUpdated++;
+      }
 
       table.innerHTML+=`
         <tr>
           <td>${data.studentName}</td>
           <td>${data.phone}</td>
           <td>${data.stage}</td>
-          <td>${data.status||""}</td>
-          <td>${data.assignedCleaner||""}</td>
+          <td>${data.infoStatus || data.status || ""}</td>
+          <td>${data.assignedCleaner || ""}</td>
           <td><button onclick="deleteLead('${d.id}')">Delete</button></td>
         </tr>
       `;
     });
 
     document.getElementById("total").innerText=total;
-    document.getElementById("verification").innerText=verification;
-    document.getElementById("infoStage").innerText=info;
-    document.getElementById("closed").innerText=closed;
+    document.getElementById("verification").innerText=verificationPending;
+    document.getElementById("infoStage").innerText=verified;
+    document.getElementById("closed").innerText=informationPending;
+    document.getElementById("finalCard").innerText=finalUpdated;
+
   });
 }
 
